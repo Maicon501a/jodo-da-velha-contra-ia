@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <!-- ✅✅✅ META TAG ESSENCIAL PARA RESPONSIVIDADE ✅✅✅ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Velha vs Gemini AI</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --board-bg: #16213e;
+            --cell-bg: #0f3460;
+            --text-color: #e94560;
+            --player-x-color: #00f5d4;
+            --player-o-color: #ff477e;
+            --border-color: #e94560;
+            --font-family: 'Poppins', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px var(--text-color);
+            text-align: center;
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            width: 330px;
+            height: 330px;
+            background-color: var(--board-bg);
+            border: 3px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px;
+            gap: 10px;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+        }
+
+        .cell {
+            background-color: var(--cell-bg);
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            user-select: none;
+        }
+
+        .cell:not(.x):not(.o):hover {
+            background-color: #1f4a8a;
+        }
+
+        .cell.x {
+            color: var(--player-x-color);
+            text-shadow: 0 0 15px var(--player-x-color);
+            animation: appear 0.3s ease-in-out;
+        }
+
+        .cell.o {
+            color: var(--player-o-color);
+            text-shadow: 0 0 15px var(--player-o-color);
+            animation: appear 0.3s ease-in-out;
+        }
+
+        @keyframes appear {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        #status-display {
+            font-size: 1.5rem;
+            font-weight: 600;
+            height: 30px;
+            width: 330px;
+            text-align: center;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 1rem;
+            width: 330px;
+            justify-content: center;
+        }
+
+        .game-button {
+            font-family: var(--font-family);
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 10px 25px;
+            border: 2px solid var(--text-color);
+            background-color: transparent;
+            color: var(--text-color);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-grow: 1; /* Faz os botões crescerem para preencher o espaço */
+        }
+
+        .game-button:hover:not(:disabled) {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--text-color);
+        }
+
+        .game-button:disabled {
+            border-color: #666;
+            color: #666;
+            cursor: not-allowed;
+            background-color: transparent;
+        }
+
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255, 255, 255, 0.3);
+            border-top-color: var(--player-x-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        #reasoning-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background-color: var(--board-bg);
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px solid var(--text-color);
+            box-shadow: 0 0 25px var(--text-color);
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            color: #fff;
+            text-align: center;
+        }
+
+        .modal-content h2 {
+            color: var(--text-color);
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 2rem;
+            color: #fff;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* ✅✅✅ MEDIA QUERY PARA DISPOSITIVOS MÓVEIS ✅✅✅ */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            #game-board {
+                width: 90vw;
+                height: 90vw;
+                gap: 8px;
+                padding: 8px;
+            }
+            .cell {
+                font-size: 4rem;
+            }
+            #status-display {
+                width: 90vw;
+                font-size: 1.2rem;
+            }
+            .buttons-container {
+                flex-direction: column; /* Empilha os botões */
+                width: 90vw;
+            }
+            .game-button {
+                font-size: 1.1rem;
+            }
+            .modal-content {
+                padding: 25px 20px;
+            }
+            .modal-content h2 {
+                font-size: 1.5rem;
+            }
+            .modal-content p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>Jogo da Velha</h1>
+        <div id="status-display">Sua vez (X)</div>
+        <div id="game-board">
+            <div class="cell" data-cell-index="0"></div>
+            <div class="cell" data-cell-index="1"></div>
+            <div class="cell" data-cell-index="2"></div>
+            <div class="cell" data-cell-index="3"></div>
+            <div class="cell" data-cell-index="4"></div>
+            <div class="cell" data-cell-index="5"></div>
+            <div class="cell" data-cell-index="6"></div>
+            <div class="cell" data-cell-index="7"></div>
+            <div class="cell" data-cell-index="8"></div>
+        </div>
+        <div class="buttons-container">
+            <button id="restart-button" class="game-button">Reiniciar Jogo</button>
+            <button id="reasoning-button" class="game-button" disabled>Ver Raciocínio</button>
+        </div>
+    </div>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="reasoning-modal">
+        <div class="modal-content">
+            <button class="close-button">×</button>
+            <h2>Raciocínio da IA</h2>
+            <p id="reasoning-text">Aguardando a jogada da IA...</p>
+        </div>
+    </div>
+
+    <script>
+        // --- ELEMENTOS DO DOM ---
+        const statusDisplay = document.getElementById('status-display');
+        const gameBoard = document.getElementById('game-board');
+        const restartButton = document.getElementById('restart-button');
+        const cells = document.querySelectorAll('.cell');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const reasoningButton = document.getElementById('reasoning-button');
+        const reasoningModal = document.getElementById('reasoning-modal');
+        const closeModalButton = document.querySelector('.close-button');
+        const reasoningText = document.getElementById('reasoning-text');
+
+        // --- CONFIGURAÇÃO DA API ---
+        const API_KEY = "AIzaSyBu2-fjhQFP7vVuXAr-oG2Lfo_PrxTe9_A";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
+
+        // --- ESTADO DO JOGO ---
+        let gameActive = true;
+        let currentPlayer = "X";
+        let boardState = ["", "", "", "", "", "", "", "", ""];
+        let lastAiReasoning = "";
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        // --- FUNÇÕES DE LÓGICA DO JOGO ---
+        function handleCellPlayed(clickedCell, cellIndex) {
+            boardState[cellIndex] = currentPlayer;
+            clickedCell.innerHTML = currentPlayer;
+            clickedCell.classList.add(currentPlayer.toLowerCase());
+        }
+
+        function handleResultValidation() {
+            let roundWon = false;
+            for (let i = 0; i < winningConditions.length; i++) {
+                const winCondition = winningConditions[i];
+                let a = boardState[winCondition[0]];
+                let b = boardState[winCondition[1]];
+                let c = boardState[winCondition[2]];
+                if (a === '' || b === '' || c === '') continue;
+                if (a === b && b === c) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                statusDisplay.innerHTML = currentPlayer === "X" ? "Você venceu!" : "A IA venceu!";
+                gameActive = false;
+                return true;
+            }
+
+            if (!boardState.includes("")) {
+                statusDisplay.innerHTML = "Deu velha! (Empate)";
+                gameActive = false;
+                return true;
+            }
+            return false;
+        }
+
+        function changePlayer() {
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            if (gameActive) {
+                statusDisplay.innerHTML = currentPlayer === "X" ? "Sua vez (X)" : "Vez da IA (O)...";
+            }
+        }
+
+        async function handleCellClick(event) {
+            const clickedCell = event.target;
+            const cellIndex = parseInt(clickedCell.getAttribute('data-cell-index'));
+
+            if (boardState[cellIndex] !== "" || !gameActive || currentPlayer === "O") return;
+
+            reasoningButton.disabled = true;
+            handleCellPlayed(clickedCell, cellIndex);
+            if (handleResultValidation()) return;
+            
+            changePlayer();
+            setTimeout(aiTurn, 500);
+        }
+
+        function handleRestartGame() {
+            gameActive = true;
+            currentPlayer = "X";
+            boardState = ["", "", "", "", "", "", "", "", ""];
+            statusDisplay.innerHTML = "Sua vez (X)";
+            cells.forEach(cell => {
+                cell.innerHTML = "";
+                cell.classList.remove('x', 'o');
+            });
+            reasoningButton.disabled = true;
+            lastAiReasoning = "";
+        }
+
+        // --- LÓGICA DA INTELIGÊNCIA ARTIFICIAL ---
+        async function aiTurn() {
+            if (!gameActive) return;
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                const canvas = await html2canvas(gameBoard);
+                const imageData = canvas.toDataURL('image/jpeg').split(',')[1];
+                
+                const aiResponse = await callGeminiAPI(imageData);
+
+                if (aiResponse && aiResponse.move !== null && boardState[aiResponse.move] === "") {
+                    const { move, reasoning } = aiResponse;
+                    lastAiReasoning = reasoning;
+                    
+                    const cellToPlay = document.querySelector(`.cell[data-cell-index='${move}']`);
+                    handleCellPlayed(cellToPlay, move);
+                    
+                    if (handleResultValidation()) {
+                        loadingOverlay.style.display = 'none';
+                        return;
+                    }
+                    changePlayer();
+                    reasoningButton.disabled = false;
+                } else {
+                    throw new Error("IA retornou jogada inválida ou nula.");
+                }
+            } catch (error) {
+                console.error("Erro durante a jogada da IA:", error);
+                statusDisplay.innerHTML = "Erro na IA. Tente reiniciar.";
+                gameActive = false;
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        async function callGeminiAPI(base64ImageData) {
+            const prompt = `
+                Você é um especialista em Jogo da Velha. Analise a imagem do tabuleiro.
+                O jogador humano é 'X' e você é 'O'. É a sua vez de jogar.
+                O tabuleiro é numerado de 0 a 8 (esquerda para direita, cima para baixo).
+
+                Sua resposta DEVE ser um objeto JSON válido, sem nenhuma palavra ou formatação adicional.
+                O JSON deve ter duas chaves:
+                1. "move": um número de 0 a 8 para a sua jogada.
+                2. "reasoning": uma frase curta em português explicando o porquê da sua escolha (ex: "Preciso bloquear a vitória do X na casa 2." ou "Estou preparando uma vitória na diagonal.").
+
+                Exemplo de resposta válida:
+                {
+                  "move": 2,
+                  "reasoning": "Estou bloqueando a linha superior do jogador X para evitar que ele vença na próxima rodada."
+                }
+
+                Analise a imagem e forneça sua resposta no formato JSON.
+            `;
+
+            const requestBody = {
+                "contents": [{ "parts": [{ "text": prompt }, { "inline_data": { "mime_type": "image/jpeg", "data": base64ImageData } }] }],
+                "generationConfig": { "response_mime_type": "application/json" }
+            };
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                console.error("Erro da API:", errorBody);
+                throw new Error(`Erro na API do Gemini: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const responseText = data.candidates[0].content.parts[0].text;
+            
+            try {
+                return JSON.parse(responseText);
+            } catch (e) {
+                console.error("Falha ao interpretar JSON da IA. Resposta recebida:", responseText);
+                throw new Error("A IA não retornou um JSON válido.");
+            }
+        }
+
+        // --- LÓGICA DO MODAL DE RACIOCÍNIO ---
+        function openReasoningModal() {
+            if (lastAiReasoning) {
+                reasoningText.textContent = lastAiReasoning;
+                reasoningModal.style.display = 'flex';
+            }
+        }
+
+        function closeReasoningModal() {
+            reasoningModal.style.display = 'none';
+        }
+
+        // --- ADICIONAR EVENT LISTENERS ---
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+        restartButton.addEventListener('click', handleRestartGame);
+        reasoningButton.addEventListener('click', openReasoningModal);
+        closeModalButton.addEventListener('click', closeReasoningModal);
+        reasoningModal.addEventListener('click', (event) => {
+            if (event.target === reasoningModal) {
+                closeReasoningModal();
+            }
+        });
+
+    </script>
+</body>
+</html>
